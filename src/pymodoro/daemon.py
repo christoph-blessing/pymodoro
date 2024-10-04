@@ -1,3 +1,4 @@
+import argparse
 import logging
 import os
 import subprocess
@@ -112,11 +113,24 @@ def run_timer(conn, duration, config):
 
 
 def main():
-    logging.basicConfig(level=logging.INFO)
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--config",
+        default=Path().home() / ".config/pymodoro/config.toml",
+        dest="config_path",
+    )
+    parser.add_argument(
+        "--log-level",
+        default="WARNING",
+        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+    )
+    args = parser.parse_args()
 
-    config_path = Path.home() / ".config/pymodoro/config.toml"
-    config = toml.load(config_path)["pymodorod"]
-    logging.info(f"Loaded config: {config}")
+    config = toml.load(args.config_path)["pymodorod"]
+
+    logging.basicConfig(level=getattr(logging, args.log_level))
+    logging.debug(f"{args=}")
+    logging.debug(f"{config=}")
 
     socket_path = Path("/tmp/pomodoro.sock")
     socket_path.unlink(missing_ok=True)
