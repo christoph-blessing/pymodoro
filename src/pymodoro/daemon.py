@@ -1,6 +1,6 @@
 import argparse
+import json
 import logging
-import os
 import subprocess
 import sys
 import time
@@ -8,6 +8,8 @@ import toml
 from multiprocessing import Pipe, Process
 from pathlib import Path
 from socket import AF_UNIX, socket
+
+from pymodoro.commands import Command
 
 
 class AlreadyRunning(Exception):
@@ -124,12 +126,12 @@ def main():
         default="WARNING",
         choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
     )
-    args = parser.parse_args()
+    command = parser.parse_args()
 
-    config = toml.load(args.config_path)["pymodorod"]
+    config = toml.load(command.config_path)["pymodorod"]
 
-    logging.basicConfig(level=getattr(logging, args.log_level))
-    logging.debug(f"{args=}")
+    logging.basicConfig(level=getattr(logging, command.log_level))
+    logging.debug(f"{command=}")
     logging.debug(f"{config=}")
 
     socket_path = Path("/tmp/pomodoro.sock")
@@ -142,23 +144,24 @@ def main():
 
     while True:
         conn, _ = s.accept()
-        args = conn.recv(4096).decode("utf-8").split()
-        match args:
-            case ["start", duration]:
+        command = json.loads(conn.recv(4096).decode("utf-8"))
+        logging.debug(f"{command=}")
+        match command:
+            case {"command": Command.START, "duration": duration}:
                 try:
                     timer.start(int(duration) * 1000)
                 except AlreadyRunning:
                     message = b"Error: Timer already running!"
                 else:
                     message = b"Timer started"
-            case ["stop"]:
+            case {"command": Command.STOP}:
                 try:
                     timer.stop()
                 except NotRunning:
                     message = b"Error: Timer not running!"
                 else:
                     message = b"Timer stopped"
-            case ["status"]:
+            case {"command": Command.STATUS}:
                 if (status := timer.status()) is not None:
                     message = f"{round(status['remaining'] / 1000)}s out of {round(status['duration'] / 1000)}s left"
                     if status["is_paused"]:
@@ -166,7 +169,7 @@ def main():
                     message = message.encode()
                 else:
                     message = b"Not running"
-            case ["pause"]:
+            case {"command": Command.PAUSE}:
                 try:
                     timer.pause()
                 except AlreadyPaused:
@@ -175,7 +178,7 @@ def main():
                     message = b"Error: Timer is not running!"
                 else:
                     message = b"Timer paused"
-            case ["resume"]:
+            case {"command": Command.RESUME}:
                 try:
                     timer.resume()
                 except NotPaused:

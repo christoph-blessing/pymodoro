@@ -1,15 +1,20 @@
 import logging
+import json
 from pathlib import Path
 from socket import socket, AF_UNIX
 import argparse
 
 import toml
 
+from .commands import Command
+
 
 def send_command(command):
+    command = json.dumps(command).encode()
+    logging.debug(f"{command=}")
     s = socket(family=AF_UNIX)
     s.connect("/tmp/pomodoro.sock")
-    s.send(command.encode())
+    s.send(command)
     print(s.recv(4096).decode("utf-8"))
 
 
@@ -55,24 +60,23 @@ def start(args, config):
     except ValueError as error:
         print(error)
         exit(1)
-    command = f"start {duration}"
-    send_command(command)
+    send_command({"command": Command.START, "duration": duration})
 
 
 def stop(args, config):
-    send_command("stop")
+    send_command({"command": Command.STOP})
 
 
 def pause(args, config):
-    send_command("pause")
+    send_command({"command": Command.PAUSE})
 
 
 def resume(args, config):
-    send_command("resume")
+    send_command({"command": Command.RESUME})
 
 
 def status(args, config):
-    send_command("status")
+    send_command({"command": Command.STATUS})
 
 
 def main():
