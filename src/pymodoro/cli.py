@@ -1,5 +1,8 @@
+from pathlib import Path
 from socket import socket, AF_UNIX
 import argparse
+
+import toml
 
 
 def send_command(command):
@@ -41,9 +44,13 @@ def parse_duration(spec):
     return total
 
 
-def start(args):
+def start(args, config):
+    if args.duration_spec is None:
+        duration_spec = config["default_duration"]
+    else:
+        duration_spec = args.duration_spec
     try:
-        duration = parse_duration(args.duration_spec)
+        duration = parse_duration(duration_spec)
     except ValueError as error:
         print(error)
         exit(1)
@@ -51,29 +58,36 @@ def start(args):
     send_command(command)
 
 
-def stop(args):
+def stop(args, config):
     send_command("stop")
 
 
-def pause(args):
+def pause(args, config):
     send_command("pause")
 
 
-def resume(args):
+def resume(args, config):
     send_command("resume")
 
 
-def status(args):
+def status(args, config):
     send_command("status")
 
 
 def main():
+
     parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "-c",
+        "--config",
+        default=Path().home() / ".config/pymodoro/config.toml",
+        dest="config_path",
+    )
     parser.set_defaults(func=status)
     subparsers = parser.add_subparsers()
 
     start_parser = subparsers.add_parser("start")
-    start_parser.add_argument("duration_spec")
+    start_parser.add_argument("-d", "--duration", dest="duration_spec")
     start_parser.set_defaults(func=start)
 
     stop_parser = subparsers.add_parser("stop")
@@ -89,7 +103,8 @@ def main():
     status_parser.set_defaults(func=status)
 
     args = parser.parse_args()
-    args.func(args)
+    config = toml.load(args.config_path)["pymodoro"]
+    args.func(args, config)
 
 
 if __name__ == "__main__":
