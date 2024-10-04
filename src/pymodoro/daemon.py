@@ -3,6 +3,7 @@ import os
 import subprocess
 import sys
 import time
+import toml
 from multiprocessing import Pipe, Process
 from pathlib import Path
 from socket import AF_UNIX, socket
@@ -25,17 +26,15 @@ class NotPaused(Exception):
 
 
 class Timer:
-    def __init__(self, sound_path):
+    def __init__(self, config):
         self._timer = None
-        self._sound_path = sound_path
+        self._config = config
 
     def start(self, duration):
         if self._is_running():
             raise AlreadyRunning
         parent_conn, child_conn = Pipe()
-        process = Process(
-            target=run_timer, args=(child_conn, duration, self._sound_path)
-        )
+        process = Process(target=run_timer, args=(child_conn, duration, self._config))
         process.start()
         self._timer = {"process": process, "conn": parent_conn}
 
@@ -83,7 +82,7 @@ class Timer:
         return status["is_paused"]
 
 
-def run_timer(conn, duration, sound_path):
+def run_timer(conn, duration, config):
     passed = 0
     is_paused = False
     while passed < duration:
@@ -108,14 +107,16 @@ def run_timer(conn, duration, sound_path):
             case "RESUME":
                 is_paused = False
     else:
-        subprocess.run(["aplay", sound_path])
+        subprocess.run(config["done_cmd"])
     sys.exit()
 
 
 def main():
     logging.basicConfig(level=logging.INFO)
 
-    sound_path = os.environ["SOUND_PATH"]
+    config_path = Path.home() / ".config/pymodoro/config.toml"
+    config = toml.load(config_path)["pymodorod"]
+    logging.info(f"Loaded config: {config}")
 
     socket_path = Path("/tmp/pomodoro.sock")
     socket_path.unlink(missing_ok=True)
@@ -123,7 +124,7 @@ def main():
     s = socket(family=AF_UNIX)
     s.bind(str(socket_path))
     s.listen()
-    timer = Timer(sound_path)
+    timer = Timer(config)
 
     while True:
         conn, _ = s.accept()
