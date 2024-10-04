@@ -1,0 +1,8 @@
+[project]
+name = "pymodoro"
+version = "0.0.1"
+
+[project.scripts]
+pymodoro = "pymodoro.cli:main"
+pymodorod = "pymodoro.daemon:main"
+
