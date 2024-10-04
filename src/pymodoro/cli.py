@@ -69,6 +69,7 @@ def status(args):
 
 def main():
     parser = argparse.ArgumentParser()
+    parser.set_defaults(func=status)
     subparsers = parser.add_subparsers()
 
     start_parser = subparsers.add_parser("start")
