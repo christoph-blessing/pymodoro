@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 from socket import socket, AF_UNIX
 import argparse
@@ -83,6 +84,11 @@ def main():
         default=Path().home() / ".config/pymodoro/config.toml",
         dest="config_path",
     )
+    parser.add_argument(
+        "--log-level",
+        default="WARNING",
+        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+    )
     parser.set_defaults(func=status)
     subparsers = parser.add_subparsers()
 
@@ -103,7 +109,13 @@ def main():
     status_parser.set_defaults(func=status)
 
     args = parser.parse_args()
+
     config = toml.load(args.config_path)["pymodoro"]
+
+    logging.basicConfig(level=getattr(logging, args.log_level))
+    logging.debug(f"{args=}")
+    logging.debug(f"{config=}")
+
     args.func(args, config)
 
 
