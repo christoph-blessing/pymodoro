@@ -6,6 +6,14 @@ import argparse
 
 import toml
 
+from .responses import (
+    PauseResponse,
+    ResumeResponse,
+    StartResponse,
+    StatusResponse,
+    StopResponse,
+)
+
 from .commands import Command
 
 
@@ -15,7 +23,10 @@ def send_command(command):
     s = socket(family=AF_UNIX)
     s.connect("/tmp/pomodoro.sock")
     s.send(command)
-    print(s.recv(4096).decode("utf-8"))
+    response = json.loads(s.recv(4096).decode("utf-8"))
+    if response["response"] == "INVALID_COMMAND":
+        raise RuntimeError("Error: Invalid command sent to daemon!")
+    return response
 
 
 def parse_duration(spec):
@@ -60,27 +71,57 @@ def start(args, config):
     except ValueError as error:
         print(error)
         exit(1)
-    send_command({"command": Command.START, "duration": duration})
+    response = send_command({"command": Command.START, "duration": duration})
+    match response:
+        case {"response": StartResponse.OK, "duration": duration}:
+            print(f"Timer for {duration}s started")
+        case {"response": StartResponse.ALREADY_RUNNING}:
+            print("Error: Timer is already running!")
 
 
 def stop(args, config):
-    send_command({"command": Command.STOP})
+    match send_command({"command": Command.STOP}):
+        case {"response": StopResponse.OK}:
+            print("Timer stopped")
+        case {"response": StopResponse.NOT_RUNNING}:
+            print("Error: Timer not running!")
 
 
 def pause(args, config):
-    send_command({"command": Command.PAUSE})
+    match send_command({"command": Command.PAUSE}):
+        case {"response": PauseResponse.OK}:
+            print("Timer paused")
+        case {"response": PauseResponse.ALREADY_PAUSED}:
+            print("Error: Timer is already paused!")
+        case {"response": PauseResponse.NOT_RUNNING}:
+            print("Error: Timer is not running!")
 
 
 def resume(args, config):
-    send_command({"command": Command.RESUME})
+    match send_command({"command": Command.RESUME}):
+        case {"response": ResumeResponse.OK}:
+            print("Timer resumed")
+        case {"response": ResumeResponse.NOT_PAUSED}:
+            print("Error: Timer is not paused!")
 
 
 def status(args, config):
-    send_command({"command": Command.STATUS})
+    match send_command({"command": Command.STATUS}):
+        case {
+            "response": StatusResponse.OK,
+            "duration": duration,
+            "remaining": remaining,
+            "is_paused": is_paused,
+        }:
+            message = f"{remaining}s of {duration}s left"
+            if is_paused:
+                message += " (paused)"
+            print(message)
+        case {"response": StatusResponse.OK}:
+            print("Not running")
 
 
 def main():
-
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "-c",

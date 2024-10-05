@@ -10,6 +10,13 @@ from pathlib import Path
 from socket import AF_UNIX, socket
 
 from pymodoro.commands import Command
+from pymodoro.responses import (
+    PauseResponse,
+    ResumeResponse,
+    StartResponse,
+    StatusResponse,
+    StopResponse,
+)
 
 
 class AlreadyRunning(Exception):
@@ -151,43 +158,47 @@ def main():
                 try:
                     timer.start(int(duration) * 1000)
                 except AlreadyRunning:
-                    message = b"Error: Timer already running!"
+                    response = {"response": StartResponse.ALREADY_RUNNING}
                 else:
-                    message = b"Timer started"
+                    response = {"response": StartResponse.OK, "duration": duration}
             case {"command": Command.STOP}:
                 try:
                     timer.stop()
                 except NotRunning:
-                    message = b"Error: Timer not running!"
+                    response = {"response": StopResponse.NOT_RUNNING}
                 else:
-                    message = b"Timer stopped"
+                    response = {"response": StopResponse.OK}
             case {"command": Command.STATUS}:
                 if (status := timer.status()) is not None:
-                    message = f"{round(status['remaining'] / 1000)}s out of {round(status['duration'] / 1000)}s left"
-                    if status["is_paused"]:
-                        message += " (paused)"
-                    message = message.encode()
+                    response = {
+                        "response": StatusResponse.OK,
+                        "duration": status["duration"] // 1000,
+                        "remaining": status["remaining"] // 1000,
+                        "is_paused": status["is_paused"],
+                    }
                 else:
-                    message = b"Not running"
+                    response = {"response": StatusResponse.OK}
             case {"command": Command.PAUSE}:
                 try:
                     timer.pause()
                 except AlreadyPaused:
-                    message = b"Error: Timer is already paused!"
+                    response = {"response": PauseResponse.ALREADY_PAUSED}
                 except NotRunning:
-                    message = b"Error: Timer is not running!"
+                    response = {"response": PauseResponse.NOT_RUNNING}
                 else:
-                    message = b"Timer paused"
+                    response = {"response": PauseResponse.OK}
             case {"command": Command.RESUME}:
                 try:
                     timer.resume()
                 except NotPaused:
-                    message = b"Error: Timer is not paused!"
+                    response = {"response": ResumeResponse.NOT_PAUSED}
                 else:
-                    message = b"Timer resumed"
+                    response = {"response": ResumeResponse.OK}
             case _:
-                message = b"Error: Invalid arguments!"
-        conn.send(message)
+                response = {"response": "INVALID_COMMAND"}
+        response = json.dumps(response).encode()
+        logging.debug(f"{response=}")
+        conn.send(response)
 
 
 if __name__ == "__main__":
