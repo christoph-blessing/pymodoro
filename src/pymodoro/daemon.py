@@ -6,6 +6,7 @@ import sys
 import time
 import toml
 from multiprocessing import Pipe, Process
+from functools import partial
 from pathlib import Path
 from socket import AF_UNIX, socket
 
@@ -95,6 +96,7 @@ class Timer:
 def run_timer(conn, duration, config):
     passed = 0
     is_paused = False
+    config["begin_cmd"]()
     while passed < duration:
         if not is_paused:
             time.sleep(0.001)
@@ -117,8 +119,19 @@ def run_timer(conn, duration, config):
             case "RESUME":
                 is_paused = False
     else:
-        subprocess.run(config["done_cmd"])
+        config["done_cmd"]()
+    config["end_cmd"]()
     sys.exit()
+
+
+def load_config(path):
+    config = toml.load(path)["pymodorod"]
+    for command in ["done_cmd", "begin_cmd", "end_cmd"]:
+        if command not in config:
+            config[command] = lambda: None
+        else:
+            config[command] = partial(subprocess.run, config[command])
+    return config
 
 
 def main():
@@ -133,12 +146,12 @@ def main():
         default="WARNING",
         choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
     )
-    command = parser.parse_args()
+    args = parser.parse_args()
 
-    config = toml.load(command.config_path)["pymodorod"]
+    config = load_config(args.config_path)
 
-    logging.basicConfig(level=getattr(logging, command.log_level))
-    logging.debug(f"{command=}")
+    logging.basicConfig(level=getattr(logging, args.log_level))
+    logging.debug(f"{args=}")
     logging.debug(f"{config=}")
 
     socket_path = Path("/tmp/pomodoro.sock")
