@@ -94,13 +94,12 @@ class Timer:
 
 
 def run_timer(conn, duration, config):
-    passed = 0
     is_paused = False
     config["begin_cmd"]()
-    while passed < duration:
+    start = time.time()
+    while (elapsed_time := time.time() - start) < duration:
         if not is_paused:
             time.sleep(0.001)
-            passed += 1
             if not conn.poll():
                 continue
         match conn.recv():
@@ -108,7 +107,7 @@ def run_timer(conn, duration, config):
                 conn.send(
                     {
                         "duration": duration,
-                        "remaining": duration - passed,
+                        "remaining": round(duration - elapsed_time),
                         "is_paused": is_paused,
                     }
                 )
@@ -169,7 +168,7 @@ def main():
         match command:
             case {"command": Command.START, "duration": duration}:
                 try:
-                    timer.start(int(duration) * 1000)
+                    timer.start(int(duration))
                 except AlreadyRunning:
                     response = {"response": StartResponse.ALREADY_RUNNING}
                 else:
@@ -185,8 +184,8 @@ def main():
                 if (status := timer.status()) is not None:
                     response = {
                         "response": StatusResponse.OK,
-                        "duration": status["duration"] // 1000,
-                        "remaining": status["remaining"] // 1000,
+                        "duration": status["duration"],
+                        "remaining": status["remaining"],
                         "is_paused": status["is_paused"],
                     }
                 else:
