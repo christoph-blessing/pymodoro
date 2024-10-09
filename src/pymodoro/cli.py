@@ -61,6 +61,16 @@ def parse_duration(spec):
     return total
 
 
+def format_duration(duration):
+    assert duration <= 99 * 3600, "Provided duration is too large to format!"
+    assert duration >= 0, "Expected non-negative duration, received negative one!"
+    hours = duration // 3600
+    remaining = duration % 3600
+    minutes = remaining // 60
+    seconds = remaining % 60
+    return f"{hours:{0}>2}:{minutes:{0}>2}:{seconds:{0}>2}"
+
+
 def start(args, config):
     if args.duration_spec is None:
         duration_spec = config["default_duration"]
@@ -71,10 +81,13 @@ def start(args, config):
     except ValueError as error:
         print(error)
         exit(1)
+    if duration > 99 * 3600:
+        print(f"Error: Expected duration to be between 0s and 99h, got {duration}s")
+        exit(1)
     response = send_command({"command": Command.START, "duration": duration})
     match response:
         case {"response": StartResponse.OK, "duration": duration}:
-            print(f"Timer for {duration}s started")
+            print(f"Timer for {format_duration(duration)} started")
         case {"response": StartResponse.ALREADY_RUNNING}:
             print("Error: Timer is already running!")
 
@@ -113,7 +126,9 @@ def status(args, config):
             "remaining": remaining,
             "is_paused": is_paused,
         }:
-            message = f"{remaining}s of {duration}s left"
+            message = (
+                f"{format_duration(remaining)} of {format_duration(duration)} left"
+            )
             if is_paused:
                 message += " (paused)"
             print(message)
