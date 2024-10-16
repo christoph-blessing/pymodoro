@@ -21,7 +21,11 @@ def send_command(command):
     command = json.dumps(command).encode()
     logging.debug(f"{command=}")
     s = socket(family=AF_UNIX)
-    s.connect("/tmp/pomodoro.sock")
+    try:
+        s.connect("/tmp/pomodoro.sock")
+    except ConnectionRefusedError:
+        print("Error: Could not connect to daemon! Is it running?")
+        exit(1)
     s.send(command)
     response = json.loads(s.recv(4096).decode("utf-8"))
     if response["response"] == "INVALID_COMMAND":
