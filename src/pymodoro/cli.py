@@ -130,9 +130,9 @@ def status(args, config):
             "remaining": remaining,
             "is_paused": is_paused,
         }:
-            message = (
-                f"{format_duration(remaining)} of {format_duration(duration)} left"
-            )
+            remaining_percent = round(remaining / duration * 100)
+            message = f"[{'#' * round(remaining_percent / 10): <10}] "
+            message += f"{remaining_percent}% ({format_duration(remaining)}) of {format_duration(duration)} left"
             if is_paused:
                 message += " (paused)"
             print(message)
