@@ -1,5 +1,6 @@
 import logging
 import json
+import math
 from pathlib import Path
 from socket import socket, AF_UNIX
 import argparse
@@ -130,8 +131,8 @@ def status(args, config):
             "remaining": remaining,
             "is_paused": is_paused,
         }:
-            remaining_percent = round(remaining / duration * 100)
-            message = f"[{'#' * round(remaining_percent / 10): <10}] "
+            remaining_percent = math.ceil(remaining / duration * 100)
+            message = f"[{'#' * math.ceil(remaining_percent / 10): <10}] "
             message += f"{remaining_percent}% ({format_duration(remaining)}) of {format_duration(duration)} left"
             if is_paused:
                 message += " (paused)"
