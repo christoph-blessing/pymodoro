@@ -22,8 +22,13 @@
     {
       devShells.x86_64-linux.default =
         let
-          arg = project.renderers.withPackages { inherit python; };
-          pythonEnv = python.withPackages arg;
+          arg = project.renderers.mkPythonEditablePackage { inherit python; };
+          myPython = python.override {
+            packageOverrides = final: prev: {
+              pymodoro = final.mkPythonEditablePackage arg;
+            };
+          };
+          pythonEnv = myPython.withPackages (ps: [ ps.pymodoro ]);
         in
         pkgs.mkShell { packages = [ pythonEnv ]; };
       packages.x86_64-linux.default =
