@@ -10,6 +10,7 @@ from functools import partial
 from pathlib import Path
 from socket import AF_UNIX, socket
 
+from pymodoro.cli import pause
 from pymodoro.commands import Command
 from pymodoro.responses import (
     PauseResponse,
@@ -95,12 +96,15 @@ class Timer:
 
 def run_timer(conn, duration, config):
     pause_time = None
-    pause_duration = 0
+    past_pause_duration = 0
+    total_pause_duration = 0
     start_time = time.time()
-    while (elapsed_duration := time.time() - start_time - pause_duration) < duration:
+    while (
+        elapsed_duration := time.time() - start_time - total_pause_duration
+    ) < duration:
         time.sleep(0.001)
         if pause_time is not None:
-            pause_duration = time.time() - pause_time
+            total_pause_duration = past_pause_duration + time.time() - pause_time
         if not conn.poll():
             continue
         match conn.recv():
@@ -117,6 +121,8 @@ def run_timer(conn, duration, config):
             case "PAUSE":
                 pause_time = time.time()
             case "RESUME":
+                assert pause_time is not None
+                past_pause_duration += time.time() - pause_time
                 pause_time = None
     else:
         config["done_cmd"]()
