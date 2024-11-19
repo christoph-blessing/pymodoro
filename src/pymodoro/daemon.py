@@ -129,7 +129,7 @@ def load_config(path):
         if command not in config:
             config[command] = lambda: None
         else:
-            config[command] = partial(subprocess.run, config[command])
+            config[command] = partial(subprocess.Popen, config[command])
     return config
 
 
