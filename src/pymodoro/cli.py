@@ -18,12 +18,12 @@ from .responses import (
 from .commands import Command
 
 
-def send_command(command):
+def send_command(socket_path, command):
     command = json.dumps(command).encode()
     logging.debug(f"{command=}")
     s = socket(family=AF_UNIX)
     try:
-        s.connect("/tmp/pomodoro.sock")
+        s.connect(str(socket_path))
     except ConnectionRefusedError:
         print("Error: Could not connect to daemon! Is it running?")
         exit(1)
@@ -89,7 +89,9 @@ def start(args, config):
     if duration > 99 * 3600:
         print(f"Error: Expected duration to be between 0s and 99h, got {duration}s")
         exit(1)
-    response = send_command({"command": Command.START, "duration": duration})
+    response = send_command(
+        args.socket, {"command": Command.START, "duration": duration}
+    )
     match response:
         case {"response": StartResponse.OK, "duration": duration}:
             print(f"Timer for {format_duration(duration)} started")
@@ -98,7 +100,7 @@ def start(args, config):
 
 
 def stop(args, config):
-    match send_command({"command": Command.STOP}):
+    match send_command(args.socket, {"command": Command.STOP}):
         case {"response": StopResponse.OK}:
             print("Timer stopped")
         case {"response": StopResponse.NOT_RUNNING}:
@@ -106,7 +108,7 @@ def stop(args, config):
 
 
 def pause(args, config):
-    match send_command({"command": Command.PAUSE}):
+    match send_command(args.socket, {"command": Command.PAUSE}):
         case {"response": PauseResponse.OK}:
             print("Timer paused")
         case {"response": PauseResponse.ALREADY_PAUSED}:
@@ -116,7 +118,7 @@ def pause(args, config):
 
 
 def resume(args, config):
-    match send_command({"command": Command.RESUME}):
+    match send_command(args.socket, {"command": Command.RESUME}):
         case {"response": ResumeResponse.OK}:
             print("Timer resumed")
         case {"response": ResumeResponse.NOT_PAUSED}:
@@ -124,7 +126,7 @@ def resume(args, config):
 
 
 def status(args, config):
-    match send_command({"command": Command.STATUS}):
+    match send_command(args.socket, {"command": Command.STATUS}):
         case {
             "response": StatusResponse.OK,
             "duration": duration,
@@ -154,6 +156,7 @@ def main():
         default="WARNING",
         choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
     )
+    parser.add_argument("--socket", type=Path, default=Path("/tmp/pomodoro.sock"))
     parser.set_defaults(func=status)
     subparsers = parser.add_subparsers()
 

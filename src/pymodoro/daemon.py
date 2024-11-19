@@ -145,6 +145,7 @@ def main():
         default="WARNING",
         choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
     )
+    parser.add_argument("--socket", type=Path, default=Path("/tmp/pomodoro.sock"))
     args = parser.parse_args()
 
     config = load_config(args.config_path)
@@ -153,11 +154,10 @@ def main():
     logging.debug(f"{args=}")
     logging.debug(f"{config=}")
 
-    socket_path = Path("/tmp/pomodoro.sock")
-    socket_path.unlink(missing_ok=True)
+    args.socket.unlink(missing_ok=True)
 
     s = socket(family=AF_UNIX)
-    s.bind(str(socket_path))
+    s.bind(str(args.socket))
     s.listen()
     timer = Timer(config)
 
