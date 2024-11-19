@@ -94,33 +94,33 @@ class Timer:
 
 
 def run_timer(conn, duration, config):
-    is_paused = False
-    config["begin_cmd"]()
-    start = time.time()
-    while (elapsed_time := time.time() - start) < duration:
-        if not is_paused:
-            time.sleep(0.001)
-            if not conn.poll():
-                continue
+    pause_time = None
+    pause_duration = 0
+    start_time = time.time()
+    while (elapsed_duration := time.time() - start_time - pause_duration) < duration:
+        time.sleep(0.001)
+        if pause_time is not None:
+            pause_duration = time.time() - pause_time
+        if not conn.poll():
+            continue
         match conn.recv():
             case "STATUS":
                 conn.send(
                     {
                         "duration": duration,
-                        "remaining": round(duration - elapsed_time),
-                        "is_paused": is_paused,
+                        "remaining": round(duration - elapsed_duration),
+                        "is_paused": pause_time is not None,
                     }
                 )
             case "STOP":
                 break
             case "PAUSE":
-                is_paused = True
+                pause_time = time.time()
             case "RESUME":
-                is_paused = False
+                pause_time = None
     else:
         config["done_cmd"]()
     config["end_cmd"]()
-    sys.exit()
 
 
 def load_config(path):
