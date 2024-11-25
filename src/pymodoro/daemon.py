@@ -2,7 +2,6 @@ import argparse
 import json
 import logging
 import subprocess
-import sys
 import time
 import toml
 from multiprocessing import Pipe, Process
@@ -10,7 +9,6 @@ from functools import partial
 from pathlib import Path
 from socket import AF_UNIX, socket
 
-from pymodoro.cli import pause
 from pymodoro.commands import Command
 from pymodoro.responses import (
     PauseResponse,
@@ -99,6 +97,7 @@ def run_timer(conn, duration, config):
     past_pause_duration = 0
     total_pause_duration = 0
     start_time = time.time()
+    config["begin_cmd"]()
     while (
         elapsed_duration := time.time() - start_time - total_pause_duration
     ) < duration:
