@@ -160,8 +160,7 @@ def main():
         choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
     )
     parser.add_argument("--socket", type=Path, default=Path("/tmp/pomodoro.sock"))
-    parser.set_defaults(func=status)
-    subparsers = parser.add_subparsers()
+    subparsers = parser.add_subparsers(required=True)
 
     start_parser = subparsers.add_parser("start")
     start_parser.add_argument("-d", "--duration", dest="duration_spec")
