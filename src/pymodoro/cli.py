@@ -133,14 +133,17 @@ def status(args, config):
             "remaining": remaining,
             "is_paused": is_paused,
         }:
-            remaining_percent = math.ceil(remaining / duration * 100)
-            message = f"[{'#' * math.ceil(remaining_percent / 10): <10}] "
-            message += f"{remaining_percent}% ({format_duration(remaining)}) of {format_duration(duration)} left"
+            if args.simple:
+                message = format_duration(remaining)
+            else:
+                remaining_percent = math.ceil(remaining / duration * 100)
+                message = f"[{'#' * math.ceil(remaining_percent / 10): <10}] "
+                message += f"{remaining_percent}% ({format_duration(remaining)}) of {format_duration(duration)} left"
             if is_paused:
                 message += " (paused)"
             print(message)
         case {"response": StatusResponse.OK}:
-            print("Not running")
+            print("Inactive")
 
 
 def main():
@@ -174,6 +177,7 @@ def main():
     resume_parser.set_defaults(func=resume)
 
     status_parser = subparsers.add_parser("status")
+    status_parser.add_argument("-s", "--simple", action="store_true")
     status_parser.set_defaults(func=status)
 
     args = parser.parse_args()
