@@ -6,6 +6,6 @@ dependencies = [
 ]
 
 [project.scripts]
-pymodoro = "pymodoro.cli:main"
+pd = "pymodoro.cli:main"
 pymodorod = "pymodoro.daemon:main"
 
